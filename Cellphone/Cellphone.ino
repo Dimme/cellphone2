@@ -36,6 +36,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 int ringTone[] =          { NOTE_E5, NOTE_D5, NOTE_F4, NOTE_G4, NOTE_C5, NOTE_B5, NOTE_D4, NOTE_E4, NOTE_B5, NOTE_A5, NOTE_C4, NOTE_E4, NOTE_A5, 0 };
 int ringToneDurations[] = { 250,     250,     500,     500,     250,     250,     500,     500,     250,     250,     500,     500,     1000,    1000 };
 int ringToneIndex;
+boolean silentMode = false;
 
 GSM gsmAccess(true);
 GSMVoiceCall vcs(false);
@@ -49,7 +50,8 @@ PhoneBook pb;
 #define SCREEN_WIDTH 14
 #define ENTRY_SIZE 20
 
-int contrast = 50;
+// This contrast fits better the LCD screen, it is two click down from 50.
+int contrast = 40;
 
 int signalQuality;
 unsigned long lastClockCheckTime, lastSMSCheckTime, lastSignalQualityCheckTime, noteStartTime;
@@ -85,7 +87,7 @@ DateTime missedDateTime;
 
 GSM3_voiceCall_st prevVoiceCallStatus;
 
-enum Mode { NOMODE, TEXTALERT, MISSEDCALLALERT, ALARMALERT, LOCKED, HOME, DIAL, PHONEBOOK, EDITENTRY, EDITTEXT, MENU, MISSEDCALLS, RECEIVEDCALLS, DIALEDCALLS, TEXTS, SETTIME, SETALARM };
+enum Mode { NOMODE, TEXTALERT, MISSEDCALLALERT, ALARMALERT, LOCKED, HOME, DIAL, PHONEBOOK, EDITENTRY, EDITTEXT, MENU, SILENT, MISSEDCALLS, RECEIVEDCALLS, DIALEDCALLS, TEXTS, SETTIME, SETALARM };
 Mode mode = LOCKED, prevmode, backmode = mode, interruptedmode = mode, alarminterruptedmode = mode;
 boolean initmode, back, fromalert;
 
@@ -204,7 +206,8 @@ void setup() {
   
   delay(2000);
   
-  screen.println("connecting...");
+  screen.println("DimmeOS v0.1");
+  screen.println("Connecting...");
   screen.display();
   
   pinMode(4, OUTPUT);
@@ -220,19 +223,19 @@ void setup() {
   while (gsmAccess.begin(0, false) != GSM_READY) {
     delay(1000);
   }
-  screen.println("connected.");
+  screen.println("Connected!");
   screen.display();
   
   vcs.hangCall();
   
   delay(300);
   
-  screen.println("caching...");
+  screen.println("Caching...");
   screen.display();
   
   cachePhoneBook();
   
-  screen.println("done.");
+  screen.println("Done =)");
   screen.display();
 }
 
@@ -448,6 +451,13 @@ void loop() {
           backmode = HOME;
         } else if (key == 'D') {
           mode = PHONEBOOK;
+        } else if (key == 'U') {
+          if (silentMode) {
+            silentMode = false;
+          } else {
+            silentMode = true;
+          }
+          mode = SILENT;
         }
       } else if (mode == DIAL) {
         numberInput(key, number, sizeof(number));
@@ -600,6 +610,18 @@ void loop() {
           mode = backmode;
           back = true;
         }
+      } else if (mode == SILENT) {
+        screen.println("Silent mode:");
+        screen.println("");
+        if (silentMode) {
+          screen.println("Activated!");
+        } else {
+         screen.println("Deactivated!");
+        }
+        
+        softKeys("back");
+        
+        if (key == 'L') mode = HOME;
       } else if (mode == TEXTS) {
         softKeys("back");
         
@@ -758,13 +780,13 @@ void loop() {
       if (strlen(number) > 0 && name[0] == 0) {
         phoneNumberToName(number, name, sizeof(name) / sizeof(name[0]));
       }
-      screen.println("incoming:");
+      screen.println("Incoming:");
       screen.println(NAME_OR_NUMBER());
       softKeys("end", "answer");
       if (millis() - noteStartTime > ringToneDurations[ringToneIndex]) {
         ringToneIndex = (ringToneIndex + 1) % (sizeof(ringTone) / sizeof(ringTone[0]));
         noteStartTime = millis();
-        if (ringTone[ringToneIndex] == 0) noTone(4);
+        if (ringTone[ringToneIndex] == 0 || silentMode) noTone(4);
         else tone(4, ringTone[ringToneIndex]);
       }
       if (key == 'L') {
