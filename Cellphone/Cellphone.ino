@@ -207,7 +207,10 @@ void setup() {
   
   delay(2000);
   
-  screen.println("DimmeOS v0.1");
+  screen.setTextColor(WHITE, BLACK);
+  screen.print(" DimmeOS v0.1 ");
+  
+  screen.setTextColor(BLACK);
   screen.println("Connecting...");
   screen.display();
   
@@ -636,12 +639,15 @@ void loop() {
           back = true;
         }
       } else if (mode == SILENT) {
-        screen.println("Silent mode:");
-        screen.println("");
+        
+        screen.setTextColor(WHITE, BLACK);
+        screen.println(" Silent mode  ");
+
+        screen.setTextColor(BLACK);
         if (silentMode) {
-          screen.println("Activated!");
+          screen.print("  Activated!  ");
         } else {
-         screen.println("Deactivated!");
+         screen.print(" Deactivated! ");
         }
         
         softKeys("Back");
