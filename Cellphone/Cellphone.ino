@@ -42,6 +42,7 @@ GSM gsmAccess(true);
 GSMVoiceCall vcs(false);
 GSM_SMS sms(false);
 GSMScanner scannerNetworks;
+String currentCarrier;
 GSM3ClockService clock;
 GSM3VolumeService volume;
 GSM3DTMF dtmf;
@@ -286,6 +287,7 @@ void loop() {
 
       if ((mode == HOME || (mode == LOCKED && !unlocking)) && millis() - lastSignalQualityCheckTime > 30000) {
         signalQuality = scannerNetworks.getSignalStrength().toInt();
+        currentCarrier = scannerNetworks.getCurrentCarrier();
         lastSignalQualityCheckTime = millis();
       }
 
@@ -295,27 +297,50 @@ void loop() {
       
       if (mode == HOME || (mode == LOCKED && unlocking) || mode == ALARMALERT) {        
         screen.setTextColor(WHITE, BLACK);
-        screen.print("     ");
+        screen.print("    ");
         
-//        screen.print(clock.getMonth());
-//        screen.print("/");
-//        screen.print(clock.getDay());
-//        screen.print("/");
-//        if (clock.getYear() < 10) screen.print('0');
-//        screen.print(clock.getYear());
-//
-//        //screen.print(" ");
-//        if (clock.getMonth() < 10) screen.print(' ');
-//        if (clock.getDay() < 10) screen.print(' ');
-        if (clock.getHour() < 10) screen.print(' ');
+        // Print the time
+        if (clock.getHour() < 10) screen.print('0');
         screen.print(clock.getHour());
         screen.print(":");
         if (clock.getMinute() < 10) screen.print('0');
         screen.print(clock.getMinute());
-        screen.print("    ");
+        screen.print("     ");
         
+        // Switch the screen colors
         screen.setTextColor(BLACK);
+
+        // Print the current date
+        screen.print("  ");
+        if (clock.getDay() < 10) screen.print('0');
+        screen.print(clock.getDay());
+        screen.print("/");
+        if (clock.getMonth() < 10) screen.print('0');
+        screen.print(clock.getMonth());
+        screen.print("/");
+        if (clock.getYear() < 10) screen.print("200");
+        else screen.print("20");
+        screen.print(clock.getYear());
+        screen.println("  ");
+
+        // Print the carrier name in the middle of the screen or make it shorter
+        // if it is too long.
+        if (currentCarrier.length() > 14) {
+          screen.print(currentCarrier.substring(0,11));
+          screen.println("...");
+        } else if (currentCarrier.length() > 0) {
+          int sideChars = (14-currentCarrier.length()) / 2;
+          for (int i = 0; i < sideChars; i++) screen.print(' ');
+          screen.print(currentCarrier);
+          if ((14-currentCarrier.length()) % 2 != 0) {
+            for (int i = 0; i < sideChars; i++) screen.print(' ');            
+          } else {
+            for (int i = 0; i < sideChars+1; i++) screen.print(' ');
+          }
+          screen.println("");
+        }
         
+        // Print the signal quality
         if (signalQuality != 99)
            for (int i = 1; i <= (signalQuality + 4) / 6; i++)
              screen.drawFastVLine(i, 7 - i, i, WHITE);
@@ -338,7 +363,7 @@ void loop() {
         screen.println("Last from: ");
         screen.println(NAME_OR_NUMBER());
         screen.print(missedDateTime);
-        softKeys("close", "call");
+        softKeys("Close", "Call");
         
         if (key == 'L') {
           missed = 0;
@@ -375,7 +400,7 @@ void loop() {
           screen.print(text[i]);
         }
         
-        softKeys("close", "reply");
+        softKeys("Close", "Reply");
         
         if (key == 'L') mode = interruptedmode;
         if (key == 'R') {
@@ -397,7 +422,7 @@ void loop() {
         }
         
         screen.print("Alarm!");
-        softKeys("okay");
+        softKeys("Okay");
         if (millis() - noteStartTime > ringToneDurations[ringToneIndex]) {
           ringToneIndex = (ringToneIndex + 1) % (sizeof(ringTone) / sizeof(ringTone[0]));
           noteStartTime = millis();
@@ -436,7 +461,7 @@ void loop() {
           }
         }
       } else if (mode == HOME) {
-        softKeys("lock", "menu");
+        softKeys("Lock", "Menu");
         
         if ((key >= '0' && key <= '9') || key == '#') {
           lastKeyPressTime = millis();
@@ -461,7 +486,7 @@ void loop() {
         }
       } else if (mode == DIAL) {
         numberInput(key, number, sizeof(number));
-        softKeys("back", "call");
+        softKeys("Back", "Call");
         
         if (key == 'L') {
           mode = HOME;
@@ -508,7 +533,7 @@ void loop() {
             screen.println("Unknown");
           }
         }
-        softKeys("back", "okay");
+        softKeys("Back", "Okay");
         
         if (key == 'L') mode = HOME;
         else if (key == 'R') {
@@ -556,7 +581,7 @@ void loop() {
         if (entryField != NUMBER) screen.println(entryNumber);
         else numberInput(key, entryNumber, sizeof(entryNumber));
                 
-        softKeys("cancel", "save");
+        softKeys("Cancel", "Save");
 
         if (entryField == NAME) {
           if (key == 'D') entryField = NUMBER;
@@ -576,7 +601,7 @@ void loop() {
         }
       } else if (mode == EDITTEXT) {
         textInput(key, text, sizeof(text));
-        softKeys("cancel", "send");
+        softKeys("Cancel", "Send");
         
         if (key == 'L') {
           mode = (fromalert ? HOME : PHONEBOOK);
@@ -597,7 +622,7 @@ void loop() {
           if (strlen(menu[i].name) % SCREEN_WIDTH != 0) screen.println();
         }
         
-        softKeys("back", "okay");
+        softKeys("Back", "Okay");
         
         if (key == 'U') {
           if (menuLine > 0) menuLine--;
@@ -619,11 +644,11 @@ void loop() {
          screen.println("Deactivated!");
         }
         
-        softKeys("back");
+        softKeys("Back");
         
         if (key == 'L') mode = HOME;
       } else if (mode == TEXTS) {
-        softKeys("back");
+        softKeys("Back");
         
         if (key == 'L') mode = HOME;
       } else if (mode == SETTIME) {
@@ -647,7 +672,7 @@ void loop() {
           screen.print(setTimeSeparators[i]);
         } 
         
-        if (setTimeField == 6) softKeys("cancel", "set");
+        if (setTimeField == 6) softKeys("Cancel", "Set");
         else softKeys("cancel", "next");
         
         if (key == 'L') mode = HOME;
@@ -701,8 +726,8 @@ void loop() {
           }
         }
         
-        if ((setTimeField == -1 && alarmSetTemp == false) || setTimeField == 6) softKeys("cancel", "set");
-        else softKeys("cancel", "next");
+        if ((setTimeField == -1 && alarmSetTemp == false) || setTimeField == 6) softKeys("Cancel", "Set");
+        else softKeys("Cancel", "Next");
         
         if (key == 'L') mode = HOME;
         
@@ -749,7 +774,7 @@ void loop() {
       
       screen.println("Calling:");
       screen.print(NAME_OR_NUMBER());
-      softKeys("end");
+      softKeys("End");
       
       if (key == 'U' || key == 'D') {
         volume.checkVolume();
@@ -782,7 +807,7 @@ void loop() {
       }
       screen.println("Incoming:");
       screen.println(NAME_OR_NUMBER());
-      softKeys("end", "answer");
+      softKeys("End", "Answer");
       if (millis() - noteStartTime > ringToneDurations[ringToneIndex]) {
         ringToneIndex = (ringToneIndex + 1) % (sizeof(ringTone) / sizeof(ringTone[0]));
         noteStartTime = millis();
@@ -804,7 +829,7 @@ void loop() {
     case TALKING:
       screen.println("Connected:");
       screen.println(NAME_OR_NUMBER());
-      softKeys("end");
+      softKeys("End");
       
       if ((key >= '0' && key <= '9') || key == '#' || key == '*') dtmf.tone(key);
       
